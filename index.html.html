@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="content-type" content="text/html; charset=utf-8"/>
+	<title></title>
+	<meta name="generator" content="LibreOffice 26.8.0.3 (Linux)"/>
+	<meta name="created" content="00:00:00"/>
+	<meta name="changed" content="00:00:00"/>
+	<style type="text/css">
+		@page { size: 8.27in 11.69in; margin: 0.79in }
+		p { margin-bottom: 0.1in; line-height: 115%; background: transparent }
+		pre { font-size: 10pt; font-family: "Liberation Mono", monospace; background: transparent }
+	</style>
+</head>
+<body lang="en-US" link="#000080" vlink="#800000" dir="ltr"><pre>&lt;!DOCTYPE html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+    &lt;meta charset=&quot;UTF-8&quot;&gt;
+    &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot;&gt;
+    &lt;title&gt;Cambridge IGCSE 0625 Physics Simulator&lt;/title&gt;
+    &lt;style&gt;
+        :root {
+            /* Light Theme Variables */
+            --bg-color: #f4f7f6;
+            --panel-bg: #ffffff;
+            --text-color: #333333;
+            --border-color: #cccccc;
+            --primary-color: #0056b3;
+            --secondary-color: #e2e8f0;
+            --accent-color: #d97706;
+            --canvas-bg: #e5e5f7;
+            --canvas-grid: #c1c1d7;
+            --wire-color: #222222;
+        }
+
+        body.dark-mode {
+            /* Dark Theme Variables */
+            --bg-color: #1a1a2e;
+            --panel-bg: #16213e;
+            --text-color: #e2e8f0;
+            --border-color: #4a5568;
+            --primary-color: #4da8da;
+            --secondary-color: #0f3460;
+            --accent-color: #fbbf24;
+            --canvas-bg: #0f172a;
+            --canvas-grid: #334155;
+            --wire-color: #60a5fa;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Header &amp; Nav */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            background-color: var(--panel-bg);
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .tabs { display: flex; gap: 10px; }
+        .tab-btn {
+            padding: 10px 15px;
+            background: var(--secondary-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            cursor: pointer;
+            border-radius: 5px 5px 0 0;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+        .tab-btn.active {
+            background: var(--primary-color);
+            color: white;
+            border-bottom: none;
+        }
+
+        .theme-toggle {
+            padding: 8px 15px;
+            cursor: pointer;
+            background: var(--accent-color);
+            color: #111;
+            border: none;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+
+        /* Main Layout */
+        .app-body {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .module-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: none;
+        }
+        .module-content.active { display: block; }
+
+        /* Module A: Sandbox */
+        .sandbox-container {
+            display: flex;
+            height: 100%;
+            gap: 20px;
+        }
+        
+        .canvas-area {
+            flex: 1;
+            background-color: var(--canvas-bg);
+            background-image: radial-gradient(var(--canvas-grid) 1px, transparent 1px);
+            background-size: 20px 20px;
+            border: 2px solid var(--border-color);
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        /* Right Sidebar */
+        .sidebar {
+            width: 250px;
+            background: var(--panel-bg);
+            border-left: 2px solid var(--border-color);
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .component-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: var(--secondary-color);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            cursor: grab;
+            position: relative;
+        }
+
+        /* Tooltip */
+        .component-item .tooltip {
+            visibility: hidden;
+            width: 200px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            padding: 8px;
+            border-radius: 6px;
+            position: absolute;
+            z-index: 10;
+            top: -5px;
+            right: 105%;
+            font-size: 0.85em;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .component-item:hover .tooltip { visibility: visible; opacity: 1; }
+
+        /* Draggable SVGs */
+        .draggable-svg { stroke: var(--wire-color); fill: none; stroke-width: 2; width: 50px; height: 50px; }
+        
+        /* Module B &amp; C specific styling */
+        .card { background: var(--panel-bg); padding: 20px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 20px; }
+        .slider-container { margin: 20px 0; }
+        input[type=range] { width: 100%; max-width: 400px; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid var(--border-color); padding: 10px; text-align: center; }
+        th { background: var(--secondary-color); }
+        
+        button.action-btn { background: var(--primary-color); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 1em; }
+        button.action-btn:hover { opacity: 0.9; }
+
+        .diagram-container { position: relative; width: 100%; max-width: 600px; margin: 0 auto; }
+        .diagram-container svg { width: 100%; height: auto; stroke: var(--wire-color); fill: none; stroke-width: 2; }
+        .input-overlay { position: absolute; background: var(--panel-bg); color: var(--text-color); border: 1px solid var(--border-color); padding: 5px; width: 60px; text-align: center; border-radius: 4px; }
+    &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+
+    &lt;svg style=&quot;display:none;&quot;&gt;
+        &lt;defs&gt;
+            &lt;g id=&quot;sym-cell&quot;&gt;
+                &lt;line x1=&quot;10&quot; y1=&quot;25&quot; x2=&quot;20&quot; y2=&quot;25&quot; /&gt;
+                &lt;line x1=&quot;20&quot; y1=&quot;10&quot; x2=&quot;20&quot; y2=&quot;40&quot; stroke-width=&quot;2&quot; /&gt; &lt;line x1=&quot;30&quot; y1=&quot;18&quot; x2=&quot;30&quot; y2=&quot;32&quot; stroke-width=&quot;4&quot; /&gt; &lt;line x1=&quot;30&quot; y1=&quot;25&quot; x2=&quot;40&quot; y2=&quot;25&quot; /&gt;
+            &lt;/g&gt;
+            &lt;g id=&quot;sym-resistor&quot;&gt;
+                &lt;line x1=&quot;5&quot; y1=&quot;25&quot; x2=&quot;15&quot; y2=&quot;25&quot; /&gt;
+                &lt;rect x=&quot;15&quot; y=&quot;15&quot; width=&quot;20&quot; height=&quot;20&quot; /&gt;
+                &lt;line x1=&quot;35&quot; y1=&quot;25&quot; x2=&quot;45&quot; y2=&quot;25&quot; /&gt;
+            &lt;/g&gt;
+            &lt;g id=&quot;sym-rheostat&quot;&gt;
+                &lt;use href=&quot;#sym-resistor&quot;/&gt;
+                &lt;line x1=&quot;10&quot; y1=&quot;40&quot; x2=&quot;40&quot; y2=&quot;10&quot; marker-end=&quot;url(#arrow)&quot; /&gt;
+            &lt;/g&gt;
+            &lt;g id=&quot;sym-thermistor&quot;&gt;
+                &lt;use href=&quot;#sym-resistor&quot;/&gt;
+                &lt;polyline points=&quot;10,40 15,35 40,35&quot; /&gt;
+            &lt;/g&gt;
+            &lt;g id=&quot;sym-ldr&quot;&gt;
+                &lt;circle cx=&quot;25&quot; cy=&quot;25&quot; r=&quot;18&quot; /&gt;
+                &lt;rect x=&quot;15&quot; y=&quot;18&quot; width=&quot;20&quot; height=&quot;14&quot; /&gt;
+                &lt;line x1=&quot;5&quot; y1=&quot;5&quot; x2=&quot;12&quot; y2=&quot;12&quot; marker-end=&quot;url(#arrow)&quot;/&gt;
+                &lt;line x1=&quot;10&quot; y1=&quot;0&quot; x2=&quot;17&quot; y2=&quot;7&quot; marker-end=&quot;url(#arrow)&quot;/&gt;
+            &lt;/g&gt;
+            &lt;g id=&quot;sym-ammeter&quot;&gt;
+                &lt;line x1=&quot;0&quot; y1=&quot;25&quot; x2=&quot;10&quot; y2=&quot;25&quot;/&gt;
+                &lt;circle cx=&quot;25&quot; cy=&quot;25&quot; r=&quot;15&quot; /&gt;
+                &lt;text x=&quot;25&quot; y=&quot;30&quot; text-anchor=&quot;middle&quot; stroke=&quot;none&quot; fill=&quot;currentColor&quot; font-size=&quot;14&quot; font-family=&quot;sans-serif&quot;&gt;A&lt;/text&gt;
+                &lt;line x1=&quot;40&quot; y1=&quot;25&quot; x2=&quot;50&quot; y2=&quot;25&quot;/&gt;
+            &lt;/g&gt;
+            &lt;g id=&quot;sym-voltmeter&quot;&gt;
+                &lt;line x1=&quot;0&quot; y1=&quot;25&quot; x2=&quot;10&quot; y2=&quot;25&quot;/&gt;
+                &lt;circle cx=&quot;25&quot; cy=&quot;25&quot; r=&quot;15&quot; /&gt;
+                &lt;text x=&quot;25&quot; y=&quot;30&quot; text-anchor=&quot;middle&quot; stroke=&quot;none&quot; fill=&quot;currentColor&quot; font-size=&quot;14&quot; font-family=&quot;sans-serif&quot;&gt;V&lt;/text&gt;
+                &lt;line x1=&quot;40&quot; y1=&quot;25&quot; x2=&quot;50&quot; y2=&quot;25&quot;/&gt;
+            &lt;/g&gt;
+            &lt;g id=&quot;sym-lamp&quot;&gt;
+                &lt;line x1=&quot;0&quot; y1=&quot;25&quot; x2=&quot;10&quot; y2=&quot;25&quot;/&gt;
+                &lt;circle cx=&quot;25&quot; cy=&quot;25&quot; r=&quot;15&quot; /&gt;
+                &lt;line x1=&quot;14&quot; y1=&quot;14&quot; x2=&quot;36&quot; y2=&quot;36&quot; /&gt;
+                &lt;line x1=&quot;36&quot; y1=&quot;14&quot; x2=&quot;14&quot; y2=&quot;36&quot; /&gt;
+                &lt;line x1=&quot;40&quot; y1=&quot;25&quot; x2=&quot;50&quot; y2=&quot;25&quot;/&gt;
+            &lt;/g&gt;
+            &lt;marker id=&quot;arrow&quot; viewBox=&quot;0 0 10 10&quot; refX=&quot;5&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto-start-reverse&quot;&gt;
+                &lt;path d=&quot;M 0 0 L 10 5 L 0 10 z&quot; fill=&quot;currentColor&quot; stroke=&quot;none&quot; /&gt;
+            &lt;/marker&gt;
+        &lt;/defs&gt;
+    &lt;/svg&gt;
+
+    &lt;header&gt;
+        &lt;div class=&quot;tabs&quot;&gt;
+            &lt;button class=&quot;tab-btn active&quot; onclick=&quot;switchTab('modA')&quot;&gt;Modul A: Sandbox&lt;/button&gt;
+            &lt;button class=&quot;tab-btn&quot; onclick=&quot;switchTab('modB')&quot;&gt;Modul B: Paper 62 Lab&lt;/button&gt;
+            &lt;button class=&quot;tab-btn&quot; onclick=&quot;switchTab('modC')&quot;&gt;Modul C: Calculator&lt;/button&gt;
+            &lt;button class=&quot;tab-btn&quot; onclick=&quot;switchTab('modD')&quot;&gt;Modul D: Practice&lt;/button&gt;
+        &lt;/div&gt;
+        &lt;button class=&quot;theme-toggle&quot; onclick=&quot;toggleTheme()&quot;&gt;ð Toggle Theme&lt;/button&gt;
+    &lt;/header&gt;
+
+    &lt;div class=&quot;app-body&quot;&gt;
+        
+        &lt;div id=&quot;modA&quot; class=&quot;module-content active&quot;&gt;
+            &lt;div class=&quot;sandbox-container&quot;&gt;
+                &lt;div class=&quot;canvas-area&quot; id=&quot;dropZone&quot; ondrop=&quot;drop(event)&quot; ondragover=&quot;allowDrop(event)&quot;&gt;
+                    &lt;div style=&quot;position: absolute; top: 10px; left: 10px; background: var(--panel-bg); padding: 10px; border-radius: 5px; font-size: 0.9em; opacity: 0.8;&quot;&gt;
+                        &lt;strong&gt;Info:&lt;/strong&gt; Drag &amp; Drop komponen dari sidebar ke area grid ini. &lt;br&gt;
+                        (Ini adalah simulasi visual Sandbox IGCSE).
+                    &lt;/div&gt;
+                &lt;/div&gt;
+                
+                &lt;div class=&quot;sidebar&quot;&gt;
+                    &lt;h3 style=&quot;font-size: 1.1em; text-align: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;&quot;&gt;Components&lt;/h3&gt;
+                    
+                    &lt;div class=&quot;component-item&quot; draggable=&quot;true&quot; ondragstart=&quot;drag(event, 'sym-cell')&quot;&gt;
+                        &lt;svg class=&quot;draggable-svg&quot;&gt;&lt;use href=&quot;#sym-cell&quot;/&gt;&lt;/svg&gt;
+                        &lt;span&gt;Cell / Battery&lt;/span&gt;
+                        &lt;div class=&quot;tooltip&quot;&gt;&lt;strong&gt;Cell (Baterai)&lt;/strong&gt;&lt;br&gt;Menyediakan gaya gerak listrik (EMF) / tegangan DC.&lt;/div&gt;
+                    &lt;/div&gt;
+                    
+                    &lt;div class=&quot;component-item&quot; draggable=&quot;true&quot; ondragstart=&quot;drag(event, 'sym-resistor')&quot;&gt;
+                        &lt;svg class=&quot;draggable-svg&quot;&gt;&lt;use href=&quot;#sym-resistor&quot;/&gt;&lt;/svg&gt;
+                        &lt;span&gt;Fixed Resistor&lt;/span&gt;
+                        &lt;div class=&quot;tooltip&quot;&gt;&lt;strong&gt;Fixed Resistor (Hambatan Tetap)&lt;/strong&gt;&lt;br&gt;Membatasi aliran arus dalam rangkaian (Ohm).&lt;/div&gt;
+                    &lt;/div&gt;
+
+                    &lt;div class=&quot;component-item&quot; draggable=&quot;true&quot; ondragstart=&quot;drag(event, 'sym-rheostat')&quot;&gt;
+                        &lt;svg class=&quot;draggable-svg&quot;&gt;&lt;use href=&quot;#sym-rheostat&quot;/&gt;&lt;/svg&gt;
+                        &lt;span&gt;Variable Resistor&lt;/span&gt;
+                        &lt;div class=&quot;tooltip&quot;&gt;&lt;strong&gt;Rheostat (Hambatan Variabel)&lt;/strong&gt;&lt;br&gt;Mengubah nilai resistansi secara manual.&lt;/div&gt;
+                    &lt;/div&gt;
+
+                    &lt;div class=&quot;component-item&quot; draggable=&quot;true&quot; ondragstart=&quot;drag(event, 'sym-thermistor')&quot;&gt;
+                        &lt;svg class=&quot;draggable-svg&quot;&gt;&lt;use href=&quot;#sym-thermistor&quot;/&gt;&lt;/svg&gt;
+                        &lt;span&gt;Thermistor&lt;/span&gt;
+                        &lt;div class=&quot;tooltip&quot;&gt;&lt;strong&gt;Thermistor (NTC)&lt;/strong&gt;&lt;br&gt;Resistansi turun drastis ketika suhu naik.&lt;/div&gt;
+                    &lt;/div&gt;
+
+                    &lt;div class=&quot;component-item&quot; draggable=&quot;true&quot; ondragstart=&quot;drag(event, 'sym-ldr')&quot;&gt;
+                        &lt;svg class=&quot;draggable-svg&quot;&gt;&lt;use href=&quot;#sym-ldr&quot;/&gt;&lt;/svg&gt;
+                        &lt;span&gt;LDR&lt;/span&gt;
+                        &lt;div class=&quot;tooltip&quot;&gt;&lt;strong&gt;LDR (Light Dependent Resistor)&lt;/strong&gt;&lt;br&gt;Resistansi turun saat intensitas cahaya meningkat.&lt;/div&gt;
+                    &lt;/div&gt;
+
+                    &lt;div class=&quot;component-item&quot; draggable=&quot;true&quot; ondragstart=&quot;drag(event, 'sym-lamp')&quot;&gt;
+                        &lt;svg class=&quot;draggable-svg&quot;&gt;&lt;use href=&quot;#sym-lamp&quot;/&gt;&lt;/svg&gt;
+                        &lt;span&gt;Filament Lamp&lt;/span&gt;
+                        &lt;div class=&quot;tooltip&quot;&gt;&lt;strong&gt;Lamp (Lampu Filamen)&lt;/strong&gt;&lt;br&gt;Menyala saat ada arus, mengubah energi listrik menjadi cahaya &amp; panas.&lt;/div&gt;
+                    &lt;/div&gt;
+
+                    &lt;div class=&quot;component-item&quot; draggable=&quot;true&quot; ondragstart=&quot;drag(event, 'sym-ammeter')&quot;&gt;
+                        &lt;svg class=&quot;draggable-svg&quot;&gt;&lt;use href=&quot;#sym-ammeter&quot;/&gt;&lt;/svg&gt;
+                        &lt;span&gt;Ammeter&lt;/span&gt;
+                        &lt;div class=&quot;tooltip&quot;&gt;&lt;strong&gt;Ammeter (Amperemeter)&lt;/strong&gt;&lt;br&gt;Wajib dipasang SERI. Mengukur kuat arus (Ampere).&lt;/div&gt;
+                    &lt;/div&gt;
+
+                    &lt;div class=&quot;component-item&quot; draggable=&quot;true&quot; ondragstart=&quot;drag(event, 'sym-voltmeter')&quot;&gt;
+                        &lt;svg class=&quot;draggable-svg&quot;&gt;&lt;use href=&quot;#sym-voltmeter&quot;/&gt;&lt;/svg&gt;
+                        &lt;span&gt;Voltmeter&lt;/span&gt;
+                        &lt;div class=&quot;tooltip&quot;&gt;&lt;strong&gt;Voltmeter&lt;/strong&gt;&lt;br&gt;Wajib dipasang PARALEL. Mengukur beda potensial (Volt).&lt;/div&gt;
+                    &lt;/div&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+
+        &lt;div id=&quot;modB&quot; class=&quot;module-content&quot;&gt;
+            &lt;h2&gt;Paper 62 Investigation: Conducting Liquid&lt;/h2&gt;
+            &lt;p&gt;&lt;strong&gt;Question:&lt;/strong&gt; Investigating changes in current in a conducting liquid as the distance between two electrodes is changed.&lt;/p&gt;
+            
+            &lt;div class=&quot;card mt-20&quot;&gt;
+                &lt;h3&gt;1. Key Variables to Keep Constant (Variabel Kontrol)&lt;/h3&gt;
+                &lt;p style=&quot;font-size: 0.9em; margin-bottom: 10px;&quot;&gt;Pilih 2 variabel yang harus dijaga tetap agar eksperimen ini *fair* (sesuai Marking Scheme Cambridge):&lt;/p&gt;
+                &lt;input type=&quot;checkbox&quot; id=&quot;var1&quot; checked disabled&gt; &lt;label for=&quot;var1&quot;&gt;Volume/Depth of conducting liquid&lt;/label&gt;&lt;br&gt;
+                &lt;input type=&quot;checkbox&quot; id=&quot;var2&quot; checked disabled&gt; &lt;label for=&quot;var2&quot;&gt;Voltage (EMF) of the power supply&lt;/label&gt;&lt;br&gt;
+                &lt;input type=&quot;checkbox&quot; id=&quot;var3&quot;&gt; &lt;label for=&quot;var3&quot;&gt;Room Temperature&lt;/label&gt;
+            &lt;/div&gt;
+
+            &lt;div class=&quot;card&quot;&gt;
+                &lt;h3&gt;2. Simulation &amp; Data Collection&lt;/h3&gt;
+                &lt;div class=&quot;slider-container&quot;&gt;
+                    &lt;label for=&quot;distSlider&quot;&gt;Distance between electrodes (d): &lt;span id=&quot;distVal&quot;&gt;1.0&lt;/span&gt; cm&lt;/label&gt;&lt;br&gt;
+                    &lt;input type=&quot;range&quot; id=&quot;distSlider&quot; min=&quot;1.0&quot; max=&quot;10.0&quot; step=&quot;0.5&quot; value=&quot;1.0&quot; oninput=&quot;updateLab()&quot;&gt;
+                &lt;/div&gt;
+                
+                &lt;div style=&quot;background: var(--canvas-bg); padding: 20px; text-align: center; border-radius: 8px;&quot;&gt;
+                    &lt;p&gt;&lt;strong&gt;Current Reading (I):&lt;/strong&gt; &lt;span id=&quot;currentVal&quot; style=&quot;font-size: 1.5em; font-weight: bold; color: var(--primary-color);&quot;&gt;0.42&lt;/span&gt; A&lt;/p&gt;
+                    &lt;p&gt;&lt;strong&gt;Voltage Reading (V):&lt;/strong&gt; 5.0 V (Constant)&lt;/p&gt;
+                &lt;/div&gt;
+
+                &lt;br&gt;
+                &lt;button class=&quot;action-btn&quot; onclick=&quot;recordData()&quot;&gt;Record Reading in Table&lt;/button&gt;
+
+                &lt;table id=&quot;labTable&quot;&gt;
+                    &lt;thead&gt;
+                        &lt;tr&gt;
+                            &lt;th&gt;Distance d / cm&lt;/th&gt;
+                            &lt;th&gt;Current I / A&lt;/th&gt;
+                            &lt;th&gt;Voltage V / V&lt;/th&gt;
+                            &lt;th&gt;Resistance R / &amp;Omega;&lt;/th&gt;
+                        &lt;/tr&gt;
+                    &lt;/thead&gt;
+                    &lt;tbody&gt;
+                        &lt;/tbody&gt;
+                &lt;/table&gt;
+            &lt;/div&gt;
+
+            &lt;div class=&quot;card&quot;&gt;
+                &lt;h3&gt;3. How to Use Your Readings &amp; Conclusion&lt;/h3&gt;
+                &lt;p&gt;&lt;strong&gt;Brief Method:&lt;/strong&gt; Move the electrodes to distance d. Record the current I on the ammeter and voltage V on the voltmeter. Calculate R = V / I. Repeat for at least 5 different distances.&lt;/p&gt;
+                &lt;p&gt;&lt;strong&gt;Graph:&lt;/strong&gt; Plot a graph of &lt;em&gt;Resistance R / &amp;Omega;&lt;/em&gt; (y-axis) against &lt;em&gt;Distance d / cm&lt;/em&gt; (x-axis).&lt;/p&gt;
+                &lt;p&gt;&lt;strong&gt;Conclusion:&lt;/strong&gt; If the graph is a straight line through the origin, R is directly proportional to d.&lt;/p&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+
+        &lt;div id=&quot;modC&quot; class=&quot;module-content&quot;&gt;
+            &lt;h2&gt;Dynamic Thematic Calculator&lt;/h2&gt;
+            &lt;p&gt;Masukkan nilai yang diketahui pada diagram di bawah. Biarkan 1 kotak KOSONG untuk dihitung otomatis.&lt;/p&gt;
+            
+            &lt;div class=&quot;card&quot; style=&quot;margin-top: 20px;&quot;&gt;
+                &lt;h3&gt;Step-Up / Step-Down Transformer&lt;/h3&gt;
+                &lt;div class=&quot;diagram-container&quot; style=&quot;height: 250px; margin-top:20px;&quot;&gt;
+                    &lt;svg viewBox=&quot;0 0 400 200&quot;&gt;
+                        &lt;rect x=&quot;100&quot; y=&quot;20&quot; width=&quot;200&quot; height=&quot;160&quot; stroke-width=&quot;15&quot; /&gt;
+                        &lt;rect x=&quot;115&quot; y=&quot;35&quot; width=&quot;170&quot; height=&quot;130&quot; stroke-width=&quot;2&quot; /&gt;
+                        &lt;path d=&quot;M 60 60 C 130 60, 130 80, 60 80 C 130 80, 130 100, 60 100 C 130 100, 130 120, 60 120&quot; stroke=&quot;var(--accent-color)&quot; stroke-width=&quot;4&quot;/&gt;
+                        &lt;path d=&quot;M 340 50 C 270 50, 270 65, 340 65 C 270 65, 270 80, 340 80 C 270 80, 270 95, 340 95 C 270 95, 270 110, 340 110 C 270 110, 270 125, 340 125&quot; stroke=&quot;var(--primary-color)&quot; stroke-width=&quot;4&quot;/&gt;
+                    &lt;/svg&gt;
+                    
+                    &lt;input type=&quot;number&quot; id=&quot;Vp&quot; class=&quot;input-overlay&quot; style=&quot;top: 20px; left: 10px;&quot; placeholder=&quot;Vp&quot;&gt;
+                    &lt;span style=&quot;position: absolute; top: 25px; left: 75px;&quot;&gt;Volt (Vp)&lt;/span&gt;
+                    
+                    &lt;input type=&quot;number&quot; id=&quot;Np&quot; class=&quot;input-overlay&quot; style=&quot;top: 130px; left: 10px;&quot; placeholder=&quot;Np&quot;&gt;
+                    &lt;span style=&quot;position: absolute; top: 135px; left: 75px;&quot;&gt;Turns (Np)&lt;/span&gt;
+
+                    &lt;input type=&quot;number&quot; id=&quot;Vs&quot; class=&quot;input-overlay&quot; style=&quot;top: 20px; left: 320px;&quot; placeholder=&quot;Vs&quot;&gt;
+                    &lt;span style=&quot;position: absolute; top: 25px; left: 385px;&quot;&gt;Volt (Vs)&lt;/span&gt;
+
+                    &lt;input type=&quot;number&quot; id=&quot;Ns&quot; class=&quot;input-overlay&quot; style=&quot;top: 130px; left: 320px;&quot; placeholder=&quot;Ns&quot;&gt;
+                    &lt;span style=&quot;position: absolute; top: 135px; left: 385px;&quot;&gt;Turns (Ns)&lt;/span&gt;
+                &lt;/div&gt;
+                
+                &lt;div style=&quot;text-align: center; margin-top: 20px;&quot;&gt;
+                    &lt;button class=&quot;action-btn&quot; onclick=&quot;calcTransformer()&quot;&gt;Calculate Missing Value&lt;/button&gt;
+                    &lt;p id=&quot;calcResult&quot; style=&quot;margin-top: 15px; font-weight: bold; font-size: 1.1em;&quot;&gt;&lt;/p&gt;
+                    &lt;p style=&quot;margin-top: 5px; font-style: italic;&quot;&gt;Formula used: Vp / Vs = Np / Ns&lt;/p&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+
+        &lt;div id=&quot;modD&quot; class=&quot;module-content&quot;&gt;
+            &lt;h2&gt;Cambridge 0625 Practice Hub&lt;/h2&gt;
+            
+            &lt;div class=&quot;card&quot; style=&quot;margin-top: 20px;&quot;&gt;
+                &lt;h3&gt;Question 1 (Paper 62 Style)&lt;/h3&gt;
+                &lt;p&gt;A student is investigating a resistor. She needs to measure the potential difference across it and the current through it.&lt;/p&gt;
+                &lt;p style=&quot;margin: 10px 0;&quot;&gt;How should the ammeter and voltmeter be connected relative to the resistor?&lt;/p&gt;
+                
+                &lt;form id=&quot;q1Form&quot;&gt;
+                    &lt;input type=&quot;radio&quot; name=&quot;q1&quot; value=&quot;A&quot;&gt; A. Ammeter in parallel, Voltmeter in series.&lt;br&gt;
+                    &lt;input type=&quot;radio&quot; name=&quot;q1&quot; value=&quot;B&quot;&gt; B. Both in series.&lt;br&gt;
+                    &lt;input type=&quot;radio&quot; name=&quot;q1&quot; value=&quot;C&quot;&gt; C. Ammeter in series, Voltmeter in parallel.&lt;br&gt;
+                    &lt;input type=&quot;radio&quot; name=&quot;q1&quot; value=&quot;D&quot;&gt; D. Both in parallel.&lt;br&gt;
+                &lt;/form&gt;
+                &lt;button class=&quot;action-btn&quot; style=&quot;margin-top: 10px;&quot; onclick=&quot;checkQ1()&quot;&gt;Check Answer&lt;/button&gt;
+                &lt;p id=&quot;q1Feedback&quot; style=&quot;margin-top: 10px; font-weight: bold;&quot;&gt;&lt;/p&gt;
+            &lt;/div&gt;
+
+            &lt;div class=&quot;card&quot;&gt;
+                &lt;h3&gt;Question 2 (Paper 4 Style)&lt;/h3&gt;
+                &lt;p&gt;A circuit has a 12 V battery and a 4 &amp;Omega; resistor. Calculate the current.&lt;/p&gt;
+                &lt;input type=&quot;number&quot; id=&quot;q2Input&quot; placeholder=&quot;Enter current&quot; style=&quot;padding: 5px; margin-top: 10px;&quot;&gt; A
+                &lt;br&gt;
+                &lt;button class=&quot;action-btn&quot; style=&quot;margin-top: 10px;&quot; onclick=&quot;checkQ2()&quot;&gt;Check Answer&lt;/button&gt;
+                &lt;p id=&quot;q2Feedback&quot; style=&quot;margin-top: 10px; font-weight: bold;&quot;&gt;&lt;/p&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+
+    &lt;/div&gt;
+
+    &lt;script&gt;
+        // 1. Theme Toggle Logic
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+        }
+
+        // 2. Tab Navigation Logic
+        function switchTab(tabId) {
+            document.querySelectorAll('.module-content').forEach(el =&gt; el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el =&gt; el.classList.remove('active'));
+            
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // 3. Sandbox Drag &amp; Drop Logic (Module A)
+        let draggedComponentId = null;
+
+        function drag(ev, symId) {
+            ev.dataTransfer.setData(&quot;text&quot;, symId);
+        }
+
+        function allowDrop(ev) {
+            ev.preventDefault();
+        }
+
+        function drop(ev) {
+            ev.preventDefault();
+            const symId = ev.dataTransfer.getData(&quot;text&quot;);
+            
+            // Create a new SVG element dynamically on drop
+            const newSvg = document.createElementNS(&quot;http://www.w3.org/2000/svg&quot;, &quot;svg&quot;);
+            newSvg.setAttribute(&quot;class&quot;, &quot;draggable-svg&quot;);
+            newSvg.style.position = &quot;absolute&quot;;
+            
+            // Adjust position based on drop coordinates
+            const rect = ev.target.getBoundingClientRect();
+            let x = ev.clientX - rect.left - 25; // center the 50x50 icon
+            let y = ev.clientY - rect.top - 25;
+            
+            // Snap to grid (20px grid size defined in CSS)
+            x = Math.round(x / 20) * 20;
+            y = Math.round(y / 20) * 20;
+
+            newSvg.style.left = x + &quot;px&quot;;
+            newSvg.style.top = y + &quot;px&quot;;
+
+            const useTag = document.createElementNS(&quot;http://www.w3.org/2000/svg&quot;, &quot;use&quot;);
+            useTag.setAttribute(&quot;href&quot;, &quot;#&quot; + symId);
+            newSvg.appendChild(useTag);
+
+            // Allow dragging inside the canvas
+            newSvg.onmousedown = function(e) {
+                let shiftX = e.clientX - newSvg.getBoundingClientRect().left;
+                let shiftY = e.clientY - newSvg.getBoundingClientRect().top;
+
+                function moveAt(pageX, pageY) {
+                    let newX = pageX - rect.left - shiftX;
+                    let newY = pageY - rect.top - shiftY;
+                    newSvg.style.left = Math.round(newX / 20) * 20 + 'px';
+                    newSvg.style.top = Math.round(newY / 20) * 20 + 'px';
+                }
+
+                function onMouseMove(event) { moveAt(event.pageX, event.pageY); }
+                document.addEventListener('mousemove', onMouseMove);
+                
+                newSvg.onmouseup = function() {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    newSvg.onmouseup = null;
+                };
+            };
+            newSvg.ondragstart = function() { return false; };
+
+            document.getElementById(&quot;dropZone&quot;).appendChild(newSvg);
+        }
+
+        // 4. Lab Investigation Logic (Module B)
+        const voltageConstant = 5.0; // V
+        
+        function updateLab() {
+            const d = parseFloat(document.getElementById('distSlider').value);
+            document.getElementById('distVal').innerText = d.toFixed(1);
+            
+            // Simulated Physics: R = base_resistance + (resistivity * distance)
+            const R = 2.0 + (1.5 * d); 
+            const I = voltageConstant / R;
+            
+            document.getElementById('currentVal').innerText = I.toFixed(2);
+        }
+
+        function recordData() {
+            const d = parseFloat(document.getElementById('distSlider').value).toFixed(1);
+            const I = parseFloat(document.getElementById('currentVal').innerText).toFixed(2);
+            const V = voltageConstant.toFixed(1);
+            const R = (voltageConstant / I).toFixed(1);
+
+            const tbody = document.querySelector(&quot;#labTable tbody&quot;);
+            const row = `&lt;tr&gt;
+                &lt;td&gt;${d}&lt;/td&gt;
+                &lt;td&gt;${I}&lt;/td&gt;
+                &lt;td&gt;${V}&lt;/td&gt;
+                &lt;td&gt;${R}&lt;/td&gt;
+            &lt;/tr&gt;`;
+            tbody.insertAdjacentHTML('beforeend', row);
+        }
+
+        // 5. Transformer Calculator Logic (Module C)
+        function calcTransformer() {
+            const Vp = document.getElementById('Vp');
+            const Np = document.getElementById('Np');
+            const Vs = document.getElementById('Vs');
+            const Ns = document.getElementById('Ns');
+            
+            const v_Vp = parseFloat(Vp.value);
+            const v_Np = parseFloat(Np.value);
+            const v_Vs = parseFloat(Vs.value);
+            const v_Ns = parseFloat(Ns.value);
+
+            let resultText = &quot;&quot;;
+
+            if (!Vp.value &amp;&amp; Np.value &amp;&amp; Vs.value &amp;&amp; Ns.value) {
+                Vp.value = ((v_Vs * v_Np) / v_Ns).toFixed(2);
+                resultText = `Calculated Vp = ${Vp.value} V`;
+            } else if (!Vs.value &amp;&amp; Np.value &amp;&amp; Vp.value &amp;&amp; Ns.value) {
+                Vs.value = ((v_Vp * v_Ns) / v_Np).toFixed(2);
+                resultText = `Calculated Vs = ${Vs.value} V`;
+            } else if (!Np.value &amp;&amp; Vp.value &amp;&amp; Vs.value &amp;&amp; Ns.value) {
+                Np.value = Math.round((v_Vp * v_Ns) / v_Vs);
+                resultText = `Calculated Np = ${Np.value} Turns`;
+            } else if (!Ns.value &amp;&amp; Vp.value &amp;&amp; Vs.value &amp;&amp; Np.value) {
+                Ns.value = Math.round((v_Vs * v_Np) / v_Vp);
+                resultText = `Calculated Ns = ${Ns.value} Turns`;
+            } else {
+                resultText = &quot;Harap isi tepat 3 kotak dan biarkan 1 kotak kosong untuk dihitung.&quot;;
+            }
+
+            document.getElementById('calcResult').innerText = resultText;
+            document.getElementById('calcResult').style.color = &quot;var(--primary-color)&quot;;
+        }
+
+        // 6. Practice Hub Logic (Module D)
+        function checkQ1() {
+            const selected = document.querySelector('input[name=&quot;q1&quot;]:checked');
+            const feedback = document.getElementById('q1Feedback');
+            if (selected &amp;&amp; selected.value === &quot;C&quot;) {
+                feedback.innerText = &quot;Correct! Ammeter = Series, Voltmeter = Parallel. (Marking Scheme Cambridge)&quot;;
+                feedback.style.color = &quot;green&quot;;
+            } else {
+                feedback.innerText = &quot;Incorrect. Remember: Voltmeter measures potential difference ACROSS a component (Parallel).&quot;;
+                feedback.style.color = &quot;red&quot;;
+            }
+        }
+
+        function checkQ2() {
+            const input = document.getElementById('q2Input').value;
+            const feedback = document.getElementById('q2Feedback');
+            if (input == 3) {
+                feedback.innerText = &quot;Correct! I = V / R = 12 / 4 = 3 A.&quot;;
+                feedback.style.color = &quot;green&quot;;
+            } else {
+                feedback.innerText = &quot;Incorrect. Use Ohm's Law: I = V / R.&quot;;
+                feedback.style.color = &quot;red&quot;;
+            }
+        }
+    &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</pre>
+</body>
+</html>
