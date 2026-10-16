@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cambridge IGCSE 0625 Physics Simulator</title>
+    <style>
+        :root {
+            /* Light Theme Variables */
+            --bg-color: #f4f7f6;
+            --panel-bg: #ffffff;
+            --text-color: #333333;
+            --border-color: #cccccc;
+            --primary-color: #0056b3;
+            --secondary-color: #e2e8f0;
+            --accent-color: #d97706;
+            --canvas-bg: #e5e5f7;
+            --canvas-grid: #c1c1d7;
+            --wire-color: #222222;
+        }
+
+        body.dark-mode {
+            /* Dark Theme Variables */
+            --bg-color: #1a1a2e;
+            --panel-bg: #16213e;
+            --text-color: #e2e8f0;
+            --border-color: #4a5568;
+            --primary-color: #4da8da;
+            --secondary-color: #0f3460;
+            --accent-color: #fbbf24;
+            --canvas-bg: #0f172a;
+            --canvas-grid: #334155;
+            --wire-color: #60a5fa;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Header & Nav */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            background-color: var(--panel-bg);
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .tabs { display: flex; gap: 10px; }
+        .tab-btn {
+            padding: 10px 15px;
+            background: var(--secondary-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            cursor: pointer;
+            border-radius: 5px 5px 0 0;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+        .tab-btn.active {
+            background: var(--primary-color);
+            color: white;
+            border-bottom: none;
+        }
+
+        .theme-toggle {
+            padding: 8px 15px;
+            cursor: pointer;
+            background: var(--accent-color);
+            color: #111;
+            border: none;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+
+        /* Main Layout */
+        .app-body {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .module-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: none;
+        }
+        .module-content.active { display: block; }
+
+        /* Module A: Sandbox */
+        .sandbox-container {
+            display: flex;
+            height: 100%;
+            gap: 20px;
+        }
+        
+        .canvas-area {
+            flex: 1;
+            background-color: var(--canvas-bg);
+            background-image: radial-gradient(var(--canvas-grid) 1px, transparent 1px);
+            background-size: 20px 20px;
+            border: 2px solid var(--border-color);
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        /* Right Sidebar */
+        .sidebar {
+            width: 250px;
+            background: var(--panel-bg);
+            border-left: 2px solid var(--border-color);
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .component-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: var(--secondary-color);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            cursor: grab;
+            position: relative;
+        }
+
+        /* Tooltip */
+        .component-item .tooltip {
+            visibility: hidden;
+            width: 200px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            padding: 8px;
+            border-radius: 6px;
+            position: absolute;
+            z-index: 10;
+            top: -5px;
+            right: 105%;
+            font-size: 0.85em;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .component-item:hover .tooltip { visibility: visible; opacity: 1; }
+
+        /* Draggable SVGs */
+        .draggable-svg { stroke: var(--wire-color); fill: none; stroke-width: 2; width: 50px; height: 50px; }
+        
+        /* Module B & C specific styling */
+        .card { background: var(--panel-bg); padding: 20px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 20px; }
+        .slider-container { margin: 20px 0; }
+        input[type=range] { width: 100%; max-width: 400px; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid var(--border-color); padding: 10px; text-align: center; }
+        th { background: var(--secondary-color); }
+        
+        button.action-btn { background: var(--primary-color); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 1em; }
+        button.action-btn:hover { opacity: 0.9; }
+
+        .diagram-container { position: relative; width: 100%; max-width: 600px; margin: 0 auto; }
+        .diagram-container svg { width: 100%; height: auto; stroke: var(--wire-color); fill: none; stroke-width: 2; }
+        .input-overlay { position: absolute; background: var(--panel-bg); color: var(--text-color); border: 1px solid var(--border-color); padding: 5px; width: 60px; text-align: center; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+    <svg style="display:none;">
+        <defs>
+            <g id="sym-cell">
+                <line x1="10" y1="25" x2="20" y2="25" />
+                <line x1="20" y1="10" x2="20" y2="40" stroke-width="2" /> <line x1="30" y1="18" x2="30" y2="32" stroke-width="4" /> <line x1="30" y1="25" x2="40" y2="25" />
+            </g>
+            <g id="sym-resistor">
+                <line x1="5" y1="25" x2="15" y2="25" />
+                <rect x="15" y="15" width="20" height="20" />
+                <line x1="35" y1="25" x2="45" y2="25" />
+            </g>
+            <g id="sym-rheostat">
+                <use href="#sym-resistor"/>
+                <line x1="10" y1="40" x2="40" y2="10" marker-end="url(#arrow)" />
+            </g>
+            <g id="sym-thermistor">
+                <use href="#sym-resistor"/>
+                <polyline points="10,40 15,35 40,35" />
+            </g>
+            <g id="sym-ldr">
+                <circle cx="25" cy="25" r="18" />
+                <rect x="15" y="18" width="20" height="14" />
+                <line x1="5" y1="5" x2="12" y2="12" marker-end="url(#arrow)"/>
+                <line x1="10" y1="0" x2="17" y2="7" marker-end="url(#arrow)"/>
+            </g>
+            <g id="sym-ammeter">
+                <line x1="0" y1="25" x2="10" y2="25"/>
+                <circle cx="25" cy="25" r="15" />
+                <text x="25" y="30" text-anchor="middle" stroke="none" fill="currentColor" font-size="14" font-family="sans-serif">A</text>
+                <line x1="40" y1="25" x2="50" y2="25"/>
+            </g>
+            <g id="sym-voltmeter">
+                <line x1="0" y1="25" x2="10" y2="25"/>
+                <circle cx="25" cy="25" r="15" />
+                <text x="25" y="30" text-anchor="middle" stroke="none" fill="currentColor" font-size="14" font-family="sans-serif">V</text>
+                <line x1="40" y1="25" x2="50" y2="25"/>
+            </g>
+            <g id="sym-lamp">
+                <line x1="0" y1="25" x2="10" y2="25"/>
+                <circle cx="25" cy="25" r="15" />
+                <line x1="14" y1="14" x2="36" y2="36" />
+                <line x1="36" y1="14" x2="14" y2="36" />
+                <line x1="40" y1="25" x2="50" y2="25"/>
+            </g>
+            <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor" stroke="none" />
+            </marker>
+        </defs>
+    </svg>
+
+    <header>
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('modA')">Modul A: Sandbox</button>
+            <button class="tab-btn" onclick="switchTab('modB')">Modul B: Paper 62 Lab</button>
+            <button class="tab-btn" onclick="switchTab('modC')">Modul C: Calculator</button>
+            <button class="tab-btn" onclick="switchTab('modD')">Modul D: Practice</button>
+        </div>
+        <button class="theme-toggle" onclick="toggleTheme()">🌓 Toggle Theme</button>
+    </header>
+
+    <div class="app-body">
+        
+        <div id="modA" class="module-content active">
+            <div class="sandbox-container">
+                <div class="canvas-area" id="dropZone" ondrop="drop(event)" ondragover="allowDrop(event)">
+                    <div style="position: absolute; top: 10px; left: 10px; background: var(--panel-bg); padding: 10px; border-radius: 5px; font-size: 0.9em; opacity: 0.8;">
+                        <strong>Info:</strong> Drag & Drop komponen dari sidebar ke area grid ini. <br>
+                        (Ini adalah simulasi visual Sandbox IGCSE).
+                    </div>
+                </div>
+                
+                <div class="sidebar">
+                    <h3 style="font-size: 1.1em; text-align: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">Components</h3>
+                    
+                    <div class="component-item" draggable="true" ondragstart="drag(event, 'sym-cell')">
+                        <svg class="draggable-svg"><use href="#sym-cell"/></svg>
+                        <span>Cell / Battery</span>
+                        <div class="tooltip"><strong>Cell (Baterai)</strong><br>Menyediakan gaya gerak listrik (EMF) / tegangan DC.</div>
+                    </div>
+                    
+                    <div class="component-item" draggable="true" ondragstart="drag(event, 'sym-resistor')">
+                        <svg class="draggable-svg"><use href="#sym-resistor"/></svg>
+                        <span>Fixed Resistor</span>
+                        <div class="tooltip"><strong>Fixed Resistor (Hambatan Tetap)</strong><br>Membatasi aliran arus dalam rangkaian (Ohm).</div>
+                    </div>
+
+                    <div class="component-item" draggable="true" ondragstart="drag(event, 'sym-rheostat')">
+                        <svg class="draggable-svg"><use href="#sym-rheostat"/></svg>
+                        <span>Variable Resistor</span>
+                        <div class="tooltip"><strong>Rheostat (Hambatan Variabel)</strong><br>Mengubah nilai resistansi secara manual.</div>
+                    </div>
+
+                    <div class="component-item" draggable="true" ondragstart="drag(event, 'sym-thermistor')">
+                        <svg class="draggable-svg"><use href="#sym-thermistor"/></svg>
+                        <span>Thermistor</span>
+                        <div class="tooltip"><strong>Thermistor (NTC)</strong><br>Resistansi turun drastis ketika suhu naik.</div>
+                    </div>
+
+                    <div class="component-item" draggable="true" ondragstart="drag(event, 'sym-ldr')">
+                        <svg class="draggable-svg"><use href="#sym-ldr"/></svg>
+                        <span>LDR</span>
+                        <div class="tooltip"><strong>LDR (Light Dependent Resistor)</strong><br>Resistansi turun saat intensitas cahaya meningkat.</div>
+                    </div>
+
+                    <div class="component-item" draggable="true" ondragstart="drag(event, 'sym-lamp')">
+                        <svg class="draggable-svg"><use href="#sym-lamp"/></svg>
+                        <span>Filament Lamp</span>
+                        <div class="tooltip"><strong>Lamp (Lampu Filamen)</strong><br>Menyala saat ada arus, mengubah energi listrik menjadi cahaya & panas.</div>
+                    </div>
+
+                    <div class="component-item" draggable="true" ondragstart="drag(event, 'sym-ammeter')">
+                        <svg class="draggable-svg"><use href="#sym-ammeter"/></svg>
+                        <span>Ammeter</span>
+                        <div class="tooltip"><strong>Ammeter (Amperemeter)</strong><br>Wajib dipasang SERI. Mengukur kuat arus (Ampere).</div>
+                    </div>
+
+                    <div class="component-item" draggable="true" ondragstart="drag(event, 'sym-voltmeter')">
+                        <svg class="draggable-svg"><use href="#sym-voltmeter"/></svg>
+                        <span>Voltmeter</span>
+                        <div class="tooltip"><strong>Voltmeter</strong><br>Wajib dipasang PARALEL. Mengukur beda potensial (Volt).</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="modB" class="module-content">
+            <h2>Paper 62 Investigation: Conducting Liquid</h2>
+            <p><strong>Question:</strong> Investigating changes in current in a conducting liquid as the distance between two electrodes is changed.</p>
+            
+            <div class="card mt-20">
+                <h3>1. Key Variables to Keep Constant (Variabel Kontrol)</h3>
+                <p style="font-size: 0.9em; margin-bottom: 10px;">Pilih 2 variabel yang harus dijaga tetap agar eksperimen ini *fair* (sesuai Marking Scheme Cambridge):</p>
+                <input type="checkbox" id="var1" checked disabled> <label for="var1">Volume/Depth of conducting liquid</label><br>
+                <input type="checkbox" id="var2" checked disabled> <label for="var2">Voltage (EMF) of the power supply</label><br>
+                <input type="checkbox" id="var3"> <label for="var3">Room Temperature</label>
+            </div>
+
+            <div class="card">
+                <h3>2. Simulation & Data Collection</h3>
+                <div class="slider-container">
+                    <label for="distSlider">Distance between electrodes (d): <span id="distVal">1.0</span> cm</label><br>
+                    <input type="range" id="distSlider" min="1.0" max="10.0" step="0.5" value="1.0" oninput="updateLab()">
+                </div>
+                
+                <div style="background: var(--canvas-bg); padding: 20px; text-align: center; border-radius: 8px;">
+                    <p><strong>Current Reading (I):</strong> <span id="currentVal" style="font-size: 1.5em; font-weight: bold; color: var(--primary-color);">0.42</span> A</p>
+                    <p><strong>Voltage Reading (V):</strong> 5.0 V (Constant)</p>
+                </div>
+
+                <br>
+                <button class="action-btn" onclick="recordData()">Record Reading in Table</button>
+
+                <table id="labTable">
+                    <thead>
+                        <tr>
+                            <th>Distance d / cm</th>
+                            <th>Current I / A</th>
+                            <th>Voltage V / V</th>
+                            <th>Resistance R / &Omega;</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        </tbody>
+                </table>
+            </div>
+
+            <div class="card">
+                <h3>3. How to Use Your Readings & Conclusion</h3>
+                <p><strong>Brief Method:</strong> Move the electrodes to distance d. Record the current I on the ammeter and voltage V on the voltmeter. Calculate R = V / I. Repeat for at least 5 different distances.</p>
+                <p><strong>Graph:</strong> Plot a graph of <em>Resistance R / &Omega;</em> (y-axis) against <em>Distance d / cm</em> (x-axis).</p>
+                <p><strong>Conclusion:</strong> If the graph is a straight line through the origin, R is directly proportional to d.</p>
+            </div>
+        </div>
+
+        <div id="modC" class="module-content">
+            <h2>Dynamic Thematic Calculator</h2>
+            <p>Masukkan nilai yang diketahui pada diagram di bawah. Biarkan 1 kotak KOSONG untuk dihitung otomatis.</p>
+            
+            <div class="card" style="margin-top: 20px;">
+                <h3>Step-Up / Step-Down Transformer</h3>
+                <div class="diagram-container" style="height: 250px; margin-top:20px;">
+                    <svg viewBox="0 0 400 200">
+                        <rect x="100" y="20" width="200" height="160" stroke-width="15" />
+                        <rect x="115" y="35" width="170" height="130" stroke-width="2" />
+                        <path d="M 60 60 C 130 60, 130 80, 60 80 C 130 80, 130 100, 60 100 C 130 100, 130 120, 60 120" stroke="var(--accent-color)" stroke-width="4"/>
+                        <path d="M 340 50 C 270 50, 270 65, 340 65 C 270 65, 270 80, 340 80 C 270 80, 270 95, 340 95 C 270 95, 270 110, 340 110 C 270 110, 270 125, 340 125" stroke="var(--primary-color)" stroke-width="4"/>
+                    </svg>
+                    
+                    <input type="number" id="Vp" class="input-overlay" style="top: 20px; left: 10px;" placeholder="Vp">
+                    <span style="position: absolute; top: 25px; left: 75px;">Volt (Vp)</span>
+                    
+                    <input type="number" id="Np" class="input-overlay" style="top: 130px; left: 10px;" placeholder="Np">
+                    <span style="position: absolute; top: 135px; left: 75px;">Turns (Np)</span>
+
+                    <input type="number" id="Vs" class="input-overlay" style="top: 20px; left: 320px;" placeholder="Vs">
+                    <span style="position: absolute; top: 25px; left: 385px;">Volt (Vs)</span>
+
+                    <input type="number" id="Ns" class="input-overlay" style="top: 130px; left: 320px;" placeholder="Ns">
+                    <span style="position: absolute; top: 135px; left: 385px;">Turns (Ns)</span>
+                </div>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <button class="action-btn" onclick="calcTransformer()">Calculate Missing Value</button>
+                    <p id="calcResult" style="margin-top: 15px; font-weight: bold; font-size: 1.1em;"></p>
+                    <p style="margin-top: 5px; font-style: italic;">Formula used: Vp / Vs = Np / Ns</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="modD" class="module-content">
+            <h2>Cambridge 0625 Practice Hub</h2>
+            
+            <div class="card" style="margin-top: 20px;">
+                <h3>Question 1 (Paper 62 Style)</h3>
+                <p>A student is investigating a resistor. She needs to measure the potential difference across it and the current through it.</p>
+                <p style="margin: 10px 0;">How should the ammeter and voltmeter be connected relative to the resistor?</p>
+                
+                <form id="q1Form">
+                    <input type="radio" name="q1" value="A"> A. Ammeter in parallel, Voltmeter in series.<br>
+                    <input type="radio" name="q1" value="B"> B. Both in series.<br>
+                    <input type="radio" name="q1" value="C"> C. Ammeter in series, Voltmeter in parallel.<br>
+                    <input type="radio" name="q1" value="D"> D. Both in parallel.<br>
+                </form>
+                <button class="action-btn" style="margin-top: 10px;" onclick="checkQ1()">Check Answer</button>
+                <p id="q1Feedback" style="margin-top: 10px; font-weight: bold;"></p>
+            </div>
+
+            <div class="card">
+                <h3>Question 2 (Paper 4 Style)</h3>
+                <p>A circuit has a 12 V battery and a 4 &Omega; resistor. Calculate the current.</p>
+                <input type="number" id="q2Input" placeholder="Enter current" style="padding: 5px; margin-top: 10px;"> A
+                <br>
+                <button class="action-btn" style="margin-top: 10px;" onclick="checkQ2()">Check Answer</button>
+                <p id="q2Feedback" style="margin-top: 10px; font-weight: bold;"></p>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // 1. Theme Toggle Logic
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+        }
+
+        // 2. Tab Navigation Logic
+        function switchTab(tabId) {
+            document.querySelectorAll('.module-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // 3. Sandbox Drag & Drop Logic (Module A)
+        let draggedComponentId = null;
+
+        function drag(ev, symId) {
+            ev.dataTransfer.setData("text", symId);
+        }
+
+        function allowDrop(ev) {
+            ev.preventDefault();
+        }
+
+        function drop(ev) {
+            ev.preventDefault();
+            const symId = ev.dataTransfer.getData("text");
+            
+            // Create a new SVG element dynamically on drop
+            const newSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            newSvg.setAttribute("class", "draggable-svg");
+            newSvg.style.position = "absolute";
+            
+            // Adjust position based on drop coordinates
+            const rect = ev.target.getBoundingClientRect();
+            let x = ev.clientX - rect.left - 25; // center the 50x50 icon
+            let y = ev.clientY - rect.top - 25;
+            
+            // Snap to grid (20px grid size defined in CSS)
+            x = Math.round(x / 20) * 20;
+            y = Math.round(y / 20) * 20;
+
+            newSvg.style.left = x + "px";
+            newSvg.style.top = y + "px";
+
+            const useTag = document.createElementNS("http://www.w3.org/2000/svg", "use");
+            useTag.setAttribute("href", "#" + symId);
+            newSvg.appendChild(useTag);
+
+            // Allow dragging inside the canvas
+            newSvg.onmousedown = function(e) {
+                let shiftX = e.clientX - newSvg.getBoundingClientRect().left;
+                let shiftY = e.clientY - newSvg.getBoundingClientRect().top;
+
+                function moveAt(pageX, pageY) {
+                    let newX = pageX - rect.left - shiftX;
+                    let newY = pageY - rect.top - shiftY;
+                    newSvg.style.left = Math.round(newX / 20) * 20 + 'px';
+                    newSvg.style.top = Math.round(newY / 20) * 20 + 'px';
+                }
+
+                function onMouseMove(event) { moveAt(event.pageX, event.pageY); }
+                document.addEventListener('mousemove', onMouseMove);
+                
+                newSvg.onmouseup = function() {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    newSvg.onmouseup = null;
+                };
+            };
+            newSvg.ondragstart = function() { return false; };
+
+            document.getElementById("dropZone").appendChild(newSvg);
+        }
+
+        // 4. Lab Investigation Logic (Module B)
+        const voltageConstant = 5.0; // V
+        
+        function updateLab() {
+            const d = parseFloat(document.getElementById('distSlider').value);
+            document.getElementById('distVal').innerText = d.toFixed(1);
+            
+            // Simulated Physics: R = base_resistance + (resistivity * distance)
+            const R = 2.0 + (1.5 * d); 
+            const I = voltageConstant / R;
+            
+            document.getElementById('currentVal').innerText = I.toFixed(2);
+        }
+
+        function recordData() {
+            const d = parseFloat(document.getElementById('distSlider').value).toFixed(1);
+            const I = parseFloat(document.getElementById('currentVal').innerText).toFixed(2);
+            const V = voltageConstant.toFixed(1);
+            const R = (voltageConstant / I).toFixed(1);
+
+            const tbody = document.querySelector("#labTable tbody");
+            const row = `<tr>
+                <td>${d}</td>
+                <td>${I}</td>
+                <td>${V}</td>
+                <td>${R}</td>
+            </tr>`;
+            tbody.insertAdjacentHTML('beforeend', row);
+        }
+
+        // 5. Transformer Calculator Logic (Module C)
+        function calcTransformer() {
+            const Vp = document.getElementById('Vp');
+            const Np = document.getElementById('Np');
+            const Vs = document.getElementById('Vs');
+            const Ns = document.getElementById('Ns');
+            
+            const v_Vp = parseFloat(Vp.value);
+            const v_Np = parseFloat(Np.value);
+            const v_Vs = parseFloat(Vs.value);
+            const v_Ns = parseFloat(Ns.value);
+
+            let resultText = "";
+
+            if (!Vp.value && Np.value && Vs.value && Ns.value) {
+                Vp.value = ((v_Vs * v_Np) / v_Ns).toFixed(2);
+                resultText = `Calculated Vp = ${Vp.value} V`;
+            } else if (!Vs.value && Np.value && Vp.value && Ns.value) {
+                Vs.value = ((v_Vp * v_Ns) / v_Np).toFixed(2);
+                resultText = `Calculated Vs = ${Vs.value} V`;
+            } else if (!Np.value && Vp.value && Vs.value && Ns.value) {
+                Np.value = Math.round((v_Vp * v_Ns) / v_Vs);
+                resultText = `Calculated Np = ${Np.value} Turns`;
+            } else if (!Ns.value && Vp.value && Vs.value && Np.value) {
+                Ns.value = Math.round((v_Vs * v_Np) / v_Vp);
+                resultText = `Calculated Ns = ${Ns.value} Turns`;
+            } else {
+                resultText = "Harap isi tepat 3 kotak dan biarkan 1 kotak kosong untuk dihitung.";
+            }
+
+            document.getElementById('calcResult').innerText = resultText;
+            document.getElementById('calcResult').style.color = "var(--primary-color)";
+        }
+
+        // 6. Practice Hub Logic (Module D)
+        function checkQ1() {
+            const selected = document.querySelector('input[name="q1"]:checked');
+            const feedback = document.getElementById('q1Feedback');
+            if (selected && selected.value === "C") {
+                feedback.innerText = "Correct! Ammeter = Series, Voltmeter = Parallel. (Marking Scheme Cambridge)";
+                feedback.style.color = "green";
+            } else {
+                feedback.innerText = "Incorrect. Remember: Voltmeter measures potential difference ACROSS a component (Parallel).";
+                feedback.style.color = "red";
+            }
+        }
+
+        function checkQ2() {
+            const input = document.getElementById('q2Input').value;
+            const feedback = document.getElementById('q2Feedback');
+            if (input == 3) {
+                feedback.innerText = "Correct! I = V / R = 12 / 4 = 3 A.";
+                feedback.style.color = "green";
+            } else {
+                feedback.innerText = "Incorrect. Use Ohm's Law: I = V / R.";
+                feedback.style.color = "red";
+            }
+        }
+    </script>
+</body>
+</html>
